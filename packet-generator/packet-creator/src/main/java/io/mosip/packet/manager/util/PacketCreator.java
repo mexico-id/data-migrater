@@ -180,6 +180,7 @@ public class PacketCreator {
 
                     case "number":
 
+                    case "array":// Converting array into string as packet-manager doesn't support array.
                     case "string" :
                         demoMap.put(id, demoDetails.get(id) == null ? "" : String.valueOf(demoDetails.get(id)));
                         break;
