@@ -404,7 +404,7 @@ public class TrackerUtil {
                 }
                 sb.append(");");
 
-                sb.append(String.format("ALTER TABLE %s ADD PRIMARY KEY (SESSION_KEY, REF_ID);", TRACKER_TABLE_NAME));
+                sb.append(String.format("ALTER TABLE %s ADD PRIMARY KEY (SESSION_KEY, REF_ID, PROCESS);", TRACKER_TABLE_NAME));
                 sb.append(String.format("CREATE INDEX IX_SEARCH_1 ON  %s (REF_ID, ACTIVITY, SESSION_KEY);", TRACKER_TABLE_NAME));
                 sb.append(String.format("CREATE INDEX IX_SEARCH_2 ON  %s (REF_ID, ACTIVITY, SESSION_KEY, STATUS);", TRACKER_TABLE_NAME));
                 sb.append(String.format("CREATE INDEX IX_SEARCH_3 ON  %s (REF_ID);", TRACKER_TABLE_NAME));
