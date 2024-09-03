@@ -386,7 +386,7 @@ public class DataBaseUtil implements DataReader {
                                                     Map<FieldCategory, HashMap<String, Object>> dataHashMap = new HashMap<>();
                                                     populateDataFromResultSet(tableRequestDto, dbImportRequest.getColumnDetails(), resultMap, dataHashMap, fieldsCategoryMap, false);
 
-                                                    if (!trackerUtil.isRecordPresent(dataHashMap.get(FieldCategory.DEMO).get(dbImportRequest.getTrackerInfo().getTrackerColumn()), GlobalConfig.getActivityName())) {
+                                                    if (!trackerUtil.isRecordPresent(dataHashMap.get(FieldCategory.DEMO).get(dbImportRequest.getTrackerInfo().getTrackerColumn()), dbImportRequest.getProcess(), GlobalConfig.getActivityName())) {
                                                         for (int i = 1; i < tableRequestDtoList.size(); i++) {
                                                             PreparedStatement statement2 = null;
                                                             ResultSet resultSet1 = null;

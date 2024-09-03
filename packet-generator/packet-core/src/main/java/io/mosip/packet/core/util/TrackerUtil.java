@@ -7,6 +7,7 @@ import io.mosip.kernel.core.exception.ExceptionUtils;
 import io.mosip.kernel.core.logger.spi.Logger;
 import io.mosip.kernel.core.util.DateUtils;
 import io.mosip.packet.core.constant.DBTypes;
+import io.mosip.packet.core.constant.GlobalConfig;
 import io.mosip.packet.core.constant.TableQueries;
 import io.mosip.packet.core.constant.tracker.*;
 import io.mosip.packet.core.dto.TrackerAdditionalColumns;
@@ -321,7 +322,7 @@ public class TrackerUtil {
         }
     }
 
-    public synchronized boolean isRecordPresent(Object value, String activity) throws SQLException, InterruptedException {
+    public synchronized boolean isRecordPresent(Object value, String process, String activity) throws SQLException, InterruptedException {
         if(IS_TRACKER_REQUIRED) {
             PreparedStatement statement = null;
             ResultSet resultSet = null;
@@ -330,10 +331,11 @@ public class TrackerUtil {
                 while(isConnCreation)
                     Thread.sleep(2000);
 
-                statement = conn.prepareStatement(String.format("SELECT 1 FROM %s WHERE REF_ID = ? AND ACTIVITY = ? AND SESSION_KEY = ? AND STATUS != 'FAILED'", TRACKER_TABLE_NAME));
+                statement = conn.prepareStatement(String.format("SELECT 1 FROM %s WHERE REF_ID = ? AND ACTIVITY = ? AND SESSION_KEY = ? AND PROCESS = ? AND STATUS != 'FAILED'", TRACKER_TABLE_NAME));
                 statement.setString(1, value.toString());
                 statement.setString(2, activity);
                 statement.setString(3, SESSION_KEY);
+                statement.setString(4, process);
                 resultSet = statement.executeQuery();
 
                 if(resultSet.next())
@@ -346,7 +348,7 @@ public class TrackerUtil {
                     conn.close();
                     conn=null;
                     this.initialize();
-                    return isRecordPresent(value, activity);
+                    return isRecordPresent(value, process, GlobalConfig.getActivityName());
                 } else {
                     LOGGER.error("SESSION_ID", APPLICATION_NAME, APPLICATION_ID,
                             "Exception encountered while checking Tracker Record present - TrackerUtil "
