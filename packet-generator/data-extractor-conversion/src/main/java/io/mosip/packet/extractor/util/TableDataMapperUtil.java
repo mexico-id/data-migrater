@@ -12,15 +12,16 @@ import io.mosip.packet.core.dto.dbimport.FieldName;
 import io.mosip.packet.core.dto.dbimport.IndividualBiometricFormat;
 import io.mosip.packet.core.dto.mvel.MvelParameter;
 import io.mosip.packet.core.dto.packet.BioData;
+import io.mosip.packet.core.exception.ValidationFailedException;
 import io.mosip.packet.core.service.CustomNativeRepository;
 import io.mosip.packet.core.spi.BioConvertorApiFactory;
 import io.mosip.packet.core.spi.BioDocApiFactory;
 import io.mosip.packet.core.util.*;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Blob;
@@ -51,6 +52,9 @@ public class TableDataMapperUtil implements DataMapperUtil {
 
     @Value("${mosip.id.schema.selected.handles.attribute.name:selectedHandles}")
     private String handleAttribute;
+
+    @Value("${mosip.id.schema.primary.handle.attribute.name:id}")
+    private String primaryHandleArribute;
 
     @Autowired
     private BioDocApiFactory bioDocApiFactory;
@@ -191,6 +195,15 @@ public class TableDataMapperUtil implements DataMapperUtil {
                         if(objectStoreFetchEnabled)
                             byteVal = objectStoreHelper.getBiometricObject(new String(byteVal, StandardCharsets.UTF_8));
                         map = bioDocApiFactory.getBioData(byteVal, fieldMap);
+                        if (dataMap2.get(FieldCategory.DEMO).get(primaryHandleArribute) != null) {
+                            String curpIdInDb = (String) dataMap2.get(FieldCategory.DEMO).get(primaryHandleArribute);
+                            String curpIdInFile = new String(map.get(primaryHandleArribute));
+                            if (!StringUtils.equalsIgnoreCase(curpIdInDb, curpIdInFile)) {
+                                throw new ValidationFailedException("Invalid - " + primaryHandleArribute + " - present in file, path: " + new String(byteVal, StandardCharsets.UTF_8));
+                            } else {
+                                map.remove(primaryHandleArribute);
+                            }
+                        }
                     }
 
                     HashMap<BioSubType, DataFormat> formatMap = new HashMap<>();
