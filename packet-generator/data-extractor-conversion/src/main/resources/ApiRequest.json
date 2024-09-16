@@ -15,7 +15,7 @@
 				"executionOrderSequence": 1,
 				"tableName": "CURP_BIO_DATA",
 				"nonIdSchemaTableFields": [
-					"CURP_ID"
+					"CURP_ID", "REF_CODE"
 				],
 				"filters" : [
 					{
@@ -23,7 +23,16 @@
 						"fieldType" : "VARCHAR",
 						"fromValue" : "GAHO821215HDFLRM08",
 						"filterCondition" : "EQUAL"
-					}]
+					},
+					{
+						"filterField" : "CURP_TYPE",
+						"fieldType" : "VARCHAR",
+						"fromValue" : "NEW",
+						"filterCondition" : "EQUAL"
+					}],
+				"orderBy" : [
+					"CURP_CR_DTIMES DESC"
+				]
 			}
 		],
 		"ignoreIdSchemaFields": [
@@ -98,6 +107,10 @@
 						"imageFormat" : "PNG"
 					}
 				]
+			},
+			{
+				"fieldName": "CURP_BIO_DATA.CURP_CR_DTIMES",
+				"fieldToMap": "REF_CODE"
 			}
 		],
 		"trackerInfo" : {
