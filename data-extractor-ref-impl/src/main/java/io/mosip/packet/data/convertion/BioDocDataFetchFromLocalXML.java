@@ -2,6 +2,7 @@ package io.mosip.packet.data.convertion;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.mosip.commons.packet.exception.GetBiometricException;
 import io.mosip.kernel.core.util.CryptoUtil;
 import io.mosip.packet.core.spi.BioDocApiFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +20,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -30,12 +32,16 @@ import java.util.Map;
 public class BioDocDataFetchFromLocalXML implements BioDocApiFactory {
 
     private static final Logger logger = LoggerFactory.getLogger(BioDocDataFetchFromLocalXML.class);
+    private static final String INDIVIDUAL_BIOMETRICS_FACE = "individualBiometrics_face";
 
     /*@Value("${mosip.packet.bio.doc.data.converter.filepath}")
     private String filePath;*/
 
     @Value("${mosip.packet.image.modality.file.mapping}")
     private String modalityFileMappingJson;
+
+    @Value("${mosip.id.schema.primary.handle.attribute.name:id}")
+    private String primaryHandleArribute;
 
     private Map<String, String> modalityFileMapping;
 
@@ -51,20 +57,15 @@ public class BioDocDataFetchFromLocalXML implements BioDocApiFactory {
 
     @Override
     public Map<String, byte[]> getBioData(byte[] byteval, String fieldName) throws Exception {
-        /*File file = new File(new String(byteval, StandardCharsets.UTF_8));
-        String value = new String(byteval, StandardCharsets.UTF_8);
-        FileInputStream is = new FileInputStream(file);
-        Map<String, byte[]> map = new HashMap<>();
-        map.put(fieldName, is.readAllBytes());
-        return map;*/
+
         Map<String, byte[]> map = new HashMap<>();
 
         String filepath = new String(byteval, StandardCharsets.UTF_8);
         File file = new File(filepath);
 
         if (!file.exists() || !file.isFile()) {
-            logger.error("File not found or is not afile: {}", filepath);
-            throw new RuntimeException("File not found: " + filepath);
+            logger.error("File not found or not a file: {}", filepath);
+            throw new FileNotFoundException("File not found: " + filepath);
         }
         try {
             //parsing xml file
@@ -104,16 +105,27 @@ public class BioDocDataFetchFromLocalXML implements BioDocApiFactory {
             //For Face Image xml data processing
             //NodeList userDefinedImageRecords = document.getElementsByTagName("itl:PackageUserDefinedImageRecord");
             NodeList userDefinedImageRecords = document.getElementsByTagName("itl:PackageFacialAndSMTImageRecord");
-            for (int i = 0; i < userDefinedImageRecords.getLength(); i++) {
-                Node node = userDefinedImageRecords.item(i);
-                if (node.getNodeType() == Node.ELEMENT_NODE) {
-                    Element element = (Element) node;
+            Node node = userDefinedImageRecords.item(0);
+            if (node.getNodeType() == Node.ELEMENT_NODE) {
+                Element element = (Element) node;
 
-                    String binaryBase64Object = getElementValue(element, "nc:BinaryBase64Object");
-                    String key = modalityFileMapping.get(PHOTO);
-                    map.put(key, CryptoUtil.decodePlainBase64(binaryBase64Object));
-                    break;
-                }
+                String binaryBase64Object = getElementValue(element, "nc:BinaryBase64Object");
+                String key = modalityFileMapping.get(PHOTO);
+                map.put(key, CryptoUtil.decodePlainBase64(binaryBase64Object));
+            }
+
+            // To get CURP value from file for validation
+            NodeList pkDescTextRecords = document.getElementsByTagName("itl:PackageDescriptiveTextRecord");
+            Node node1 = pkDescTextRecords.item(0);
+            if (node1.getNodeType() == Node.ELEMENT_NODE) {
+                Element element = (Element) node1;
+                String curpId = getElementValue(element, "renapo:CURP");
+                map.put(primaryHandleArribute, curpId.getBytes());
+            }
+            // Face mandatory check.
+            if (!map.containsKey(INDIVIDUAL_BIOMETRICS_FACE) || map.get(INDIVIDUAL_BIOMETRICS_FACE) == null)  {
+                logger.error("Modality face is mandatory: {}", filepath);
+                throw new GetBiometricException("Missing biometric for FACE." + filepath);
             }
         } catch (Exception e) {
             logger.error("Error processing XML file: {}", filepath, e);
@@ -124,7 +136,7 @@ public class BioDocDataFetchFromLocalXML implements BioDocApiFactory {
 
     @Override
     public Map<String, byte[]> getDocData(byte[] byteval, String fieldName) {
-        throw new UnsupportedOperationException("getBioData is not supported for this requirement, use getDocData method instead");
+        throw new UnsupportedOperationException("Document is not supported for this requirement.");
     }
 
     private String getElementValue(Element parent, String tagName) {

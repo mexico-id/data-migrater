@@ -1,12 +1,16 @@
 package io.mosip.packet.core.util;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.kernel.clientcrypto.service.impl.ClientCryptoFacade;
 import io.mosip.kernel.core.exception.ExceptionUtils;
 import io.mosip.kernel.core.logger.spi.Logger;
 import io.mosip.kernel.core.util.DateUtils;
 import io.mosip.packet.core.constant.DBTypes;
+import io.mosip.packet.core.constant.GlobalConfig;
 import io.mosip.packet.core.constant.TableQueries;
 import io.mosip.packet.core.constant.tracker.*;
+import io.mosip.packet.core.dto.TrackerAdditionalColumns;
 import io.mosip.packet.core.dto.tracker.TrackerRequestDto;
 import io.mosip.packet.core.entity.PacketTracker;
 import io.mosip.packet.core.logger.DataProcessLogger;
@@ -15,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -37,6 +42,9 @@ public class TrackerUtil {
     @Value("${mosip.packet.creator.tracking.batch.connection.reset.count:1000}")
     private int batchConResetCount;
 
+    @Value("${mosip.packet.tracker.table.creation.additional.fields:}")
+    private String additionalFields;
+
     private int connSize = 0;
     private static String connectionHost = null;
     private boolean isConnCreation = false;
@@ -52,6 +60,8 @@ public class TrackerUtil {
 
     @Autowired
     private QueryFormatter queryFormatter;
+
+    private ObjectMapper mapper = new ObjectMapper();
 
     @PostConstruct
     public void initialize(){
@@ -72,6 +82,12 @@ public class TrackerUtil {
                 try {
                     statement = conn.createStatement();
                     statement.execute("SELECT COUNT(*) FROM " + TRACKER_TABLE_NAME);
+                    if(StringUtils.hasText(additionalFields)) {
+                        List<TrackerAdditionalColumns> val = mapper.readValue(additionalFields, new TypeReference<List<TrackerAdditionalColumns>>() {});
+                        for(TrackerAdditionalColumns detail : val) {
+                            PACKET_TRACKER_ADDITIONAL_FIELDS.put(detail.getColumnName(), detail.getIdSchemaField());
+                        }
+                    }
                 } catch (Exception e) {
                     System.out.println("Table " + TRACKER_TABLE_NAME +  " not Present in DB " + env.getProperty("spring.datasource.tracker.jdbcurl") +  ". Do you want to create ? Y-Yes, N-No");
                     String option ="";
@@ -84,7 +100,7 @@ public class TrackerUtil {
 
                     if(option.equalsIgnoreCase("y")) {
                         try {
-                            DBCreator dbCreator = new DBCreator(dbType, true);
+                            DBCreator dbCreator = new DBCreator(dbType, true, additionalFields);
                             String[] scripts = dbCreator.getValue().split(";");
                             for(String script : scripts)
                                 statement.execute(script);
@@ -117,7 +133,7 @@ public class TrackerUtil {
 
                     if(option.equalsIgnoreCase("y")) {
                         try {
-                            DBCreator dbCreator = new DBCreator(dbType, false);
+                            DBCreator dbCreator = new DBCreator(dbType, false, additionalFields);
                             String[] scripts = dbCreator.getValue().split(";");
                             for(String script : scripts)
                                 statement.execute(script);
@@ -171,13 +187,37 @@ public class TrackerUtil {
                 valueMap.put("REF_ID", trackerRequestDto.getRefId());
                 valueMap.put("REG_NO", trackerRequestDto.getRegNo());
                 valueMap.put("STATUS", trackerRequestDto.getStatus());
+                if(trackerRequestDto.getStatus().equals(TrackerStatus.STARTED.toString())) {
+                    valueMap.put("CR_BY", "MIGRATOR");
+                    valueMap.put("CR_DTIMES", DateUtils.formatDate(timestamp, "yyyy-MM-dd HH:mm:ss"));
+                    valueMap.put("UPD_BY", null);
+                    valueMap.put("UPD_DTIMES", null);
+                } else {
                 valueMap.put("CR_BY", "MIGRATOR");
-                valueMap.put("CR_DTIMES", DateUtils.formatDate(timestamp, "yyyy-MM-dd HH:mm:ss"));
+                    valueMap.put("CR_DTIMES", DateUtils.formatDate(timestamp, "yyyy-MM-dd HH:mm:ss"));
+                    valueMap.put("UPD_BY", "MIGRATOR");
+                    valueMap.put("UPD_DTIMES", DateUtils.formatDate(timestamp, "yyyy-MM-dd HH:mm:ss"));
+                }
                 valueMap.put("SESSION_KEY", trackerRequestDto.getSessionKey());
                 valueMap.put("ACTIVITY", trackerRequestDto.getActivity());
                 valueMap.put("PROCESS", trackerRequestDto.getProcess());
                 valueMap.put("COMMENTS", trackerRequestDto.getComments());
+                String insetAddCol = "";
+                String insetAddVal = "";
+                String insetAddColVal = "";
 
+                if(trackerRequestDto.getAdditionalMaps() != null) {
+                    for(Map.Entry<String, Object> entry : trackerRequestDto.getAdditionalMaps().entrySet()) {
+                        if(PACKET_TRACKER_ADDITIONAL_FIELDS.containsKey(entry.getKey()) && entry.getValue() != null) {
+                            insetAddCol += ", " + entry.getKey();
+                            insetAddVal += ",'" + entry.getValue().toString() + "'";
+                            insetAddColVal += ", " + entry.getKey() + "= '" + entry.getValue().toString() + "'";
+                        }
+                    }
+                }
+                valueMap.put("IN_ADD_COL", insetAddCol);
+                valueMap.put("IN_ADD_VAL", insetAddVal);
+                valueMap.put("IN_ADD_COL_VAL", insetAddColVal);
                 preparedStatement = conn.prepareStatement(queryFormatter.queryFormatter(query, valueMap));
                 preparedStatement.execute();
             } catch (SQLException throwables) {
@@ -291,7 +331,7 @@ public class TrackerUtil {
         }
     }
 
-    public synchronized boolean isRecordPresent(Object value, String activity) throws SQLException, InterruptedException {
+    public synchronized boolean isRecordPresent(Object value, String process, String activity) throws SQLException, InterruptedException {
         if(IS_TRACKER_REQUIRED) {
             PreparedStatement statement = null;
             ResultSet resultSet = null;
@@ -300,10 +340,11 @@ public class TrackerUtil {
                 while(isConnCreation)
                     Thread.sleep(2000);
 
-                statement = conn.prepareStatement(String.format("SELECT 1 FROM %s WHERE REF_ID = ? AND ACTIVITY = ? AND SESSION_KEY = ? AND STATUS != 'FAILED'", TRACKER_TABLE_NAME));
+                statement = conn.prepareStatement(String.format("SELECT 1 FROM %s WHERE REF_ID = ? AND ACTIVITY = ? AND SESSION_KEY = ? AND PROCESS = ? AND STATUS != 'FAILED'", TRACKER_TABLE_NAME));
                 statement.setString(1, value.toString());
                 statement.setString(2, activity);
                 statement.setString(3, SESSION_KEY);
+                statement.setString(4, process);
                 resultSet = statement.executeQuery();
 
                 if(resultSet.next())
@@ -316,7 +357,7 @@ public class TrackerUtil {
                     conn.close();
                     conn=null;
                     this.initialize();
-                    return isRecordPresent(value, activity);
+                    return isRecordPresent(value, process, GlobalConfig.getActivityName());
                 } else {
                     LOGGER.error("SESSION_ID", APPLICATION_NAME, APPLICATION_ID,
                             "Exception encountered while checking Tracker Record present - TrackerUtil "
@@ -346,7 +387,9 @@ public class TrackerUtil {
 
         private StringBuilder sb;
 
-        public DBCreator(DBTypes dbTypes, Boolean isTrackerTable) throws Exception {
+        private ObjectMapper mapper = new ObjectMapper();
+
+        public DBCreator(DBTypes dbTypes, Boolean isTrackerTable, String additionalFields) throws Exception {
             sb = new StringBuilder();
 
             if(isTrackerTable) {
@@ -362,9 +405,17 @@ public class TrackerUtil {
                 sb.append(addColumn("CR_DTIMES", Timestamp.class, 100, true, dbTypes) + ",");
                 sb.append(addColumn("UPD_BY", String.class, 100, false, dbTypes) + ",");
                 sb.append(addColumn("UPD_DTIMES", Timestamp.class, 100, false, dbTypes));
+
+                if(StringUtils.hasText(additionalFields)) {
+                    List<TrackerAdditionalColumns> val = mapper.readValue(additionalFields, new TypeReference<List<TrackerAdditionalColumns>>() {});
+                    for(TrackerAdditionalColumns detail : val) {
+                        sb.append("," + addColumn(detail.getColumnName(), getClass(detail.getColumnType()), detail.getLength(), detail.getIsNotNull(), dbTypes));
+                        PACKET_TRACKER_ADDITIONAL_FIELDS.put(detail.getColumnName(), detail.getIdSchemaField());
+                    }
+                }
                 sb.append(");");
 
-                sb.append(String.format("ALTER TABLE %s ADD PRIMARY KEY (SESSION_KEY, REF_ID);", TRACKER_TABLE_NAME));
+                sb.append(String.format("ALTER TABLE %s ADD PRIMARY KEY (SESSION_KEY, REF_ID, PROCESS);", TRACKER_TABLE_NAME));
                 sb.append(String.format("CREATE INDEX IX_SEARCH_1 ON  %s (REF_ID, ACTIVITY, SESSION_KEY);", TRACKER_TABLE_NAME));
                 sb.append(String.format("CREATE INDEX IX_SEARCH_2 ON  %s (REF_ID, ACTIVITY, SESSION_KEY, STATUS);", TRACKER_TABLE_NAME));
                 sb.append(String.format("CREATE INDEX IX_SEARCH_3 ON  %s (REF_ID);", TRACKER_TABLE_NAME));
@@ -378,6 +429,15 @@ public class TrackerUtil {
 
                 sb.append(String.format("ALTER TABLE %s ADD PRIMARY KEY (SESSION_KEY);", OFFSET_TRACKER_TABLE_NAME));
             }
+        }
+
+        private Class getClass(String columnType) {
+            if(columnType.equals("String"))
+                return String.class;
+            else if(columnType.equals("Timestamp"))
+                return Timestamp.class;
+            else
+                return String.class;
         }
 
         private String addColumn(String columnName, Class columnType, Integer length, boolean isNotNull, DBTypes dbTypes) throws Exception {

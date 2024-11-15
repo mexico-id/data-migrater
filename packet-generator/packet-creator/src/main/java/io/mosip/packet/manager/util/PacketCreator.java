@@ -29,6 +29,7 @@ import io.mosip.packet.core.dto.packet.metadata.BiometricsMetaInfoDto;
 import io.mosip.packet.core.dto.packet.metadata.DocumentMetaInfoDTO;
 import io.mosip.packet.core.dto.packet.type.IndividualBiometricType;
 import io.mosip.packet.core.dto.packet.type.SimpleType;
+import io.mosip.packet.core.dto.packet.type.TaggedListType;
 import io.mosip.packet.core.exception.PlatformErrorMessages;
 import io.mosip.packet.core.exception.ValidationFailedException;
 import io.mosip.packet.core.logger.DataProcessLogger;
@@ -43,6 +44,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
@@ -167,9 +169,12 @@ public class PacketCreator {
                     }
                 }
             } else if (type.equals("documentType")) {
-                if (demoDetails.containsKey(id) && demoDetails.get(id) != null)
+                if (demoDetails.containsKey(id) && demoDetails.get(id) != null) {
+                    throwExceptionIfMandatoryFieldIsEmpty(demoDetails, id, required, ignorableFields);
                     demoMap.put(id, String.valueOf(demoDetails.get(id)));
+                }
             } else if (demoDetails.containsKey(id) && demoDetails.get(id) != null) {
+                throwExceptionIfMandatoryFieldIsEmpty(demoDetails, id, required, ignorableFields);
                 switch (type) {
                     case "simpleType":
                         List<SimpleType> valList = new ArrayList<>();
@@ -178,17 +183,31 @@ public class PacketCreator {
                         demoMap.put(id, mapper.writeValueAsString(valList));
                         break;
 
+                    case "TaggedListType":
+                        TaggedListType taggedListType = new TaggedListType(demoDetails.get(id) == null ? "":demoDetails.get(id).toString(), new String[]{"handle"});
+                        demoMap.put(id, mapper.writeValueAsString(Arrays.asList(taggedListType)));
+                        break;
+
                     case "number":
 
+                    case "array":// Converting array into string as packet-manager doesn't support array.
                     case "string" :
                         demoMap.put(id, demoDetails.get(id) == null ? "" : String.valueOf(demoDetails.get(id)));
                         break;
                 }
             } else if (required && !ignorableFields.contains(id)) {
-                throw new Exception("Mandatory Field '" + id + "' value missing");
+                throw new Exception("Missing value for mandatory field :" + id);
             }
         }
         return demoMap;
+    }
+
+    private void throwExceptionIfMandatoryFieldIsEmpty(Map<String, Object> demoDetails, String id, Boolean required,
+                                                       List ignorableFields) throws Exception {
+        if (required && !StringUtils.hasText(demoDetails.get(id).toString())
+                && !ignorableFields.contains(id)) {
+                throw new Exception("Missing value for mandatory field :" + id);
+        }
     }
 
     public HashMap<String, Document> setDocuments(HashMap<String, Object> docDetails, List ignorableFields, HashMap<String, String> metaInfoMap, HashMap<String, Object> demoDetails)
@@ -220,7 +239,7 @@ public class PacketCreator {
                     DocumentType documentType = new DocumentType(id, document.getType(), document.getFormat(), document.getRefNumber());
                     demoDetails.put(id, mapper.writeValueAsString(documentType));
                 }  else if (required && !ignorableFields.contains(id)) {
-                    throw new Exception("Mandatory Field '" + id + "' value missing");
+                    throw new Exception("Missing value for mandatory field :" + id);
                 }
 
             }
