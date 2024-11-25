@@ -50,6 +50,10 @@
 				"fieldToMap": "parentCurpId"
 			},
 			{
+				"fieldName": "CURP_BIO_DATA.CURP_CR_DTIMES",
+				"fieldToMap": "curpCrDtimes"
+			},
+			{
 				"fieldName": "CURP_BIO_DATA.BIO_FILEPATH",
 				"primaryField": "CURP_BIO_DATA.CURP_ID",
 				"fieldToMap": "individualBiometrics_rightThumb,individualBiometrics_rightIndex,individualBiometrics_rightMiddle,individualBiometrics_rightRing,individualBiometrics_rightLittle,individualBiometrics_leftThumb,individualBiometrics_leftIndex,individualBiometrics_leftMiddle,individualBiometrics_leftRing,individualBiometrics_leftLittle,individualBiometrics_rightEye,individualBiometrics_leftEye,individualBiometrics_face",
@@ -114,7 +118,7 @@
 			}
 		],
 		"trackerInfo" : {
-			"trackerColumn" : "CURP_ID"
+			"trackerColumn" : "CURP_BIO_DATA.CURP_ID"
 		}
 	},
 	"requesttime": "2018-12-10T06:12:52.994Z",
