@@ -28,6 +28,7 @@ public class ImportIdentityServiceImpl implements ImportIdentityService {
     private static final String LANG_CODE = "eng";
     private static final String HIERARCHY_NAME = "hierarchyName";
     private static final String NAME = "name";
+    private static final String REFERENCE_ID = "INITIALIZATION";
 
     private final Logger logger = DataProcessLogger.getLogger(ImportIdentityServiceImpl.class);
     private Map<String, Map<String, Object>> locationMemoryMap = new ConcurrentHashMap<>();
@@ -55,7 +56,7 @@ public class ImportIdentityServiceImpl implements ImportIdentityService {
                 getLocationData(locationMemoryMap.get(locationCode), identity);
             } else {
                 List<String> pathSegments = Arrays.asList(locationCode, LANG_CODE);
-                ResponseWrapper response = (ResponseWrapper) dataRestClientService.getApi(ApiName.MASTER_LOCATION_GET, pathSegments, "", "", ResponseWrapper.class);
+                ResponseWrapper response = (ResponseWrapper) dataRestClientService.getApi(ApiName.MASTER_LOCATION_GET, pathSegments, "", "", ResponseWrapper.class, REFERENCE_ID);
                 if (response != null && response.getResponse() != null) {
                     Map<String, Object> locationLocalMap = new HashMap<>();
                     Map<String, Object> responseMap = (Map<String, Object>) response.getResponse();
@@ -112,7 +113,7 @@ public class ImportIdentityServiceImpl implements ImportIdentityService {
         try {
 
             ResponseWrapper response = (ResponseWrapper) dataRestClientService.postApi(ApiName.ADD_IDENTITY,
-                    null, "", "", idRequestDto, ResponseWrapper.class);
+                    null, "", "", idRequestDto, ResponseWrapper.class, REFERENCE_ID);
             logger.info("Add Identity call completed.");
             return response;
         } catch (ApisResourceAccessException e) {
@@ -125,7 +126,7 @@ public class ImportIdentityServiceImpl implements ImportIdentityService {
     private void generateUIN(IdRequestDto idRequestDto) throws ApisResourceAccessException {
         try {
             // UIN generation
-            ResponseWrapper response = (ResponseWrapper) dataRestClientService.getApi(ApiName.GET_UIN, null, "", "", ResponseWrapper.class);
+            ResponseWrapper response = (ResponseWrapper) dataRestClientService.getApi(ApiName.GET_UIN, null, "", "", ResponseWrapper.class, REFERENCE_ID);
             if (response != null && response.getResponse() != null) {
                 Map<String, String> responseMap = (Map<String, String>) response.getResponse();
                 ((Map<String, Object>) idRequestDto.getRequest().getIdentity()).put("UIN", responseMap.get("uin"));

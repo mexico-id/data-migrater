@@ -2,6 +2,7 @@ package io.mosip.packet.extractor.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.commons.packet.dto.Document;
+import io.mosip.kernel.core.logger.spi.Logger;
 import io.mosip.packet.core.constant.BioSubType;
 import io.mosip.packet.core.constant.DataFormat;
 import io.mosip.packet.core.constant.FieldCategory;
@@ -13,6 +14,7 @@ import io.mosip.packet.core.dto.dbimport.IndividualBiometricFormat;
 import io.mosip.packet.core.dto.mvel.MvelParameter;
 import io.mosip.packet.core.dto.packet.BioData;
 import io.mosip.packet.core.exception.ValidationFailedException;
+import io.mosip.packet.core.logger.DataProcessLogger;
 import io.mosip.packet.core.service.CustomNativeRepository;
 import io.mosip.packet.core.spi.BioConvertorApiFactory;
 import io.mosip.packet.core.spi.BioDocApiFactory;
@@ -31,6 +33,7 @@ import java.util.*;
 
 @Component
 public class TableDataMapperUtil implements DataMapperUtil {
+    private static final Logger LOGGER = DataProcessLogger.getLogger(TableDataMapperUtil.class);
 
     @Autowired
     private CustomNativeRepository customNativeRepository;
@@ -81,9 +84,9 @@ public class TableDataMapperUtil implements DataMapperUtil {
                     if (parameter.getParameterType().equals(ParameterType.STRING))
                         if(parameter.getParameterValue().contains("${")) {
                             String value = parameter.getParameterValue().toUpperCase();
-//                            for(FieldCategory fieldCategory : FieldCategory.values()) {
-//                                value = value.replace(fieldCategory.toString() + ":", "");
-//                            }
+ //                           for(FieldCategory fieldCategory : FieldCategory.values()) {
+ //                               value = value.replace(fieldCategory.toString() + ":", "");
+ //                           }
 
                             try {
                                 map.put(parameter.getParameterName(), formatter.replaceColumntoDataIfAny(value, dataMap2));
@@ -174,11 +177,14 @@ public class TableDataMapperUtil implements DataMapperUtil {
 
                     dataMap2.get(fieldFormatRequest.getFieldCategory()).put(originalField, demoValue);
                 }
+
                 if(fieldFormatRequest.getUseAsHandle() != null && fieldFormatRequest.getUseAsHandle()) {
                     dataMap2.get(fieldFormatRequest.getFieldCategory()).put(handleAttribute, fieldMap);
                 }
             } else if (fieldFormatRequest.getFieldCategory().equals(FieldCategory.BIO)) {
                 String fieldName = fieldFormatRequest.getFieldList().get(0).getOriginalFieldName();
+                LOGGER.debug("SESSION_ID", "DATA_READER", "dataMapper()", "FieldName for Biometric Read " + fieldName);
+
                 Map<String, byte[]> map = new HashMap<>();
 
                 if(fieldsCategoryMap.get(tableName).containsKey(fieldName))  {
@@ -191,6 +197,7 @@ public class TableDataMapperUtil implements DataMapperUtil {
                         }
                     }
 
+                    LOGGER.debug("SESSION_ID", "DATA_READER", "dataMapper()", "Value for Biometric Read for Field : " + fieldName + " is : " + String.valueOf(byteVal));
                     if(byteVal != null) {
                         if(objectStoreFetchEnabled)
                             byteVal = objectStoreHelper.getBiometricObject(new String(byteVal, StandardCharsets.UTF_8));
@@ -242,6 +249,8 @@ public class TableDataMapperUtil implements DataMapperUtil {
                     if(objectStoreFetchEnabled)
                         byteVal = objectStoreHelper.getBiometricObject(new String(byteVal, StandardCharsets.UTF_8));
                     byteVal = bioDocApiFactory.getDocData(byteVal, fieldMap).get(fieldMap);
+
+                    if(byteVal != null) {
                     document.setDocument(byteVal);
                     if(fieldFormatRequest.getDocumentAttributes() != null) {
                         DocumentAttributes documentAttributes = fieldFormatRequest.getDocumentAttributes();
@@ -266,6 +275,7 @@ public class TableDataMapperUtil implements DataMapperUtil {
                 }
             }
         }
+    }
     }
 
     private byte[] convertObjectToByteArray(Object obj) throws IOException, SQLException {

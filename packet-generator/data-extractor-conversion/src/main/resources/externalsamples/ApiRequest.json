@@ -1,189 +1,126 @@
 {
-  "id": "string",
-  "metadata": {},
-  "request": {
-    "dbType": "MSSQL",
-    "url": "localhost\\SQLEXPRESS",
-    "port": "55630",
-    "databaseName": "MOSIP_NEW",
-    "userId": "trialblazerseee",
-    "password": "ka09071989",
-    "process": "MIGRATOR",
-    "tableDetails": [
-      {
-        "queryType": "SQL_QUERY",
-        "executionOrderSequence": 2,
-        "tableName": "dbo.POC_DOCUMENTS",
-        "sqlQuery": "SELECT poc_dt_id, cit_id, doc_ref_no, 'JPG' AS doc_format, document FROM DBO.POC_DOCUMENTS WHERE cit_id = ${DEMO:CITIZEN_ID}"
-      },
-      {
-        "queryType": "TABLE",
-        "executionOrderSequence": 1,
-        "tableName": "dbo.CITIZEN",
-        "nonIdSchemaFields": [
-          "CITIZEN_ID"
-        ],
-        "filters" : [
-          {
-            "filterField" : "CITIZEN_ID",
-            "fieldType" : "VARCHAR",
-            "fromValue" : "2322428",
-            "filterCondition" : "EQUAL"
-          }
-        ]
-      }
-    ],
-    "ignoreIdSchemaFields": [
-      "proofOfConsent",
-      "proofOfIdentity",
-      "region",
-      "district",
-      "chiefdom",
-      "consentText",
-      "consent"
-    ],
-    "columnDetails": [
-      {
-        "fieldName": "CITIZEN.CITIZEN_ID",
-        "fieldToMap": "CITIZEN_ID"
-      },
-      {
-        "fieldName": "CITIZEN.FIRSTNAME,CITIZEN.MIDDLENAME",
-        "fieldToMap": "firstName"
-      },
-      {
-        "fieldName": "CITIZEN.MIDDLENAME",
-        "fieldToMap": "middleName"
-      },
-      {
-        "fieldName": "CITIZEN.LASTNAME",
-        "fieldToMap": "lastName"
-      },
-      {
-        "fieldName": "CITIZEN.BIRTHDATE",
-        "fieldToMap": "dateOfBirth",
-        "destFormat": ["YMD"]
+	"id": "string",
+	"metadata": {},
+	"request": {
+		"dbType": "POSTGRESQL",
+		"url": "postgres.mexico-pilot.mosip.net",
+		"port": "5432",
+		"databaseName": "mosip_curp",
+		"userId": "postgres",
+		"password": "abc123",
+		"process": "NEW",
+		"tableDetails": [
+			{
+				"queryType": "TABLE",
+				"executionOrderSequence": 1,
+				"tableName": "CURP_BIO_DATA",
+				"nonIdSchemaTableFields": [
+					"CURP_ID", "REF_CODE"
+				],
+				"filters" : [
+					{
+						"filterField" : "CURP_TYPE",
+						"fieldType" : "VARCHAR",
+						"fromValue" : "NEW",
+						"filterCondition" : "EQUAL"
+					},
+					{
+						"filterField" : "STATUS",
+						"fieldType" : "VARCHAR",
+						"fromValue" : "ACTIVE",
+						"filterCondition" : "EQUAL"
+					}],
+				"orderBy" : [
+					"CURP_CR_DTIMES DESC"
+				]
+			}
+		],
+		"ignoreIdSchemaFields": [
 
-      },
-      {
-        "fieldName": "CITIZEN.GENDER",
-        "fieldToMap": "gender"
-      },
-      {
-        "fieldName": "CITIZEN.PHONE_NUMBER",
-        "fieldToMap": "phone"
-      },
-      {
-        "fieldName": "CITIZEN.NATIONALITY",
-        "fieldToMap": "residenceStatus",
-        "mvelExpressions": {
-          "mvelFile": "Nationality.mvel",
-          "parameters": [
-            {
-              "parameterName": "nationality",
-              "parameterType": "STRING",
-              "parameterValue": "${NATIONALITY}"
-            },
-            {
-              "parameterName": "nationalList",
-              "parameterType": "SQL",
-              "parameterValue": "SELECT lower(COUNTRY_CODE) FROM ECOWAS_MAP"
-            }
-          ]
-        }
-      },
-      {
-        "fieldName": "CITIZEN.RESIDENTIAL_ADDRESS",
-        "fieldToMap": "addressLine"
-      },
-      {
-        "fieldName": "CITIZEN.PERMANENT_ADDRESS",
-        "fieldToMap": "permanentAddressLine"
-      },
-      {
-        "fieldName": "POC_DOCUMENTS.document",
-        "fieldToMap": "proofOfAddress",
-        "documentAttributes": {
-          "documentRefNoField": "POC_DOCUMENTS.doc_ref_no",
-          "documentFormatField": "POC_DOCUMENTS.doc_format",
-          "documentCodeField": "POC_DOCUMENTS.poc_dt_id"
-        }
-      },
-      {
-        "fieldName": "CITIZEN.LEFT_THUMB",
-        "primaryField": "CITIZEN.FIRSTNAME",
-        "srcFormat": "WSQ",
-        "fieldToMap": "individualBiometrics_leftThumb"
-      },
-      {
-        "fieldName": "CITIZEN.photo",
-        "primaryField": "CITIZEN.FIRSTNAME",
-        "srcFormat": "JPEG",
-        "destFormat": [
-          "JP2",
-          "ISO"
-        ],
-        "fieldToMap": "individualBiometrics_face"
-      },
-      {
-        "fieldName": "CITIZEN.LEFT_INDEX_FINGER",
-        "primaryField": "CITIZEN.FIRSTNAME",
-        "srcFormat": "WSQ",
-        "fieldToMap": "individualBiometrics_leftIndex"
-      },
-      {
-        "fieldName": "CITIZEN.LEFT_MIDDLE_FINGER",
-        "primaryField": "CITIZEN.FIRSTNAME",
-        "srcFormat": "WSQ",
-        "fieldToMap": "individualBiometrics_leftMiddle"
-      },
-      {
-        "fieldName": "CITIZEN.LEFT_RING_FINGER",
-        "primaryField": "CITIZEN.FIRSTNAME",
-        "srcFormat": "WSQ",
-        "fieldToMap": "individualBiometrics_leftRing"
-      },
-      {
-        "fieldName": "CITIZEN.LEFT_LITTLE_FINGER",
-        "primaryField": "CITIZEN.FIRSTNAME",
-        "srcFormat": "WSQ",
-        "fieldToMap": "individualBiometrics_leftLittle"
-      },
-      {
-        "fieldName": "CITIZEN.RIGHT_THUMB",
-        "primaryField": "CITIZEN.FIRSTNAME",
-        "srcFormat": "WSQ",
-        "fieldToMap": "individualBiometrics_rightThumb"
-      },
-      {
-        "fieldName": "CITIZEN.RIGHT_INDEX_FINGER",
-        "primaryField": "CITIZEN.FIRSTNAME",
-        "srcFormat": "WSQ",
-        "fieldToMap": "individualBiometrics_rightIndex"
-      },
-      {
-        "fieldName": "CITIZEN.RIGHT_MIDDLE_FINGER",
-        "primaryField": "CITIZEN.FIRSTNAME",
-        "srcFormat": "WSQ",
-        "fieldToMap": "individualBiometrics_rightMiddle"
-      },
-      {
-        "fieldName": "CITIZEN.RIGHT_RING_FINGER",
-        "primaryField": "CITIZEN.FIRSTNAME",
-        "srcFormat": "WSQ",
-        "fieldToMap": "individualBiometrics_rightRing"
-      },
-      {
-        "fieldName": "CITIZEN.RIGHT_LITTLE_FINGER",
-        "primaryField": "CITIZEN.FIRSTNAME",
-        "srcFormat": "WSQ",
-        "fieldToMap": "individualBiometrics_rightLittle"
-      }
-    ],
-  "trackerInfo" : {
-    "trackerColumn" : "CITIZEN_ID"
-  }
-  },
-  "requesttime": "2018-12-10T06:12:52.994Z",
-  "version": "string"
+		],
+
+		"columnDetails": [
+			{
+				"fieldName": "CURP_BIO_DATA.CURP_ID",
+				"fieldToMap": "curpId",
+				"useAsHandle" : true
+			},
+			{
+				"fieldName": "CURP_BIO_DATA.CURP_ID",
+				"fieldToMap": "parentCurpId"
+			},
+			{
+				"fieldName": "CURP_BIO_DATA.CURP_CR_DTIMES",
+				"fieldToMap": "curpCrDtimes"
+			},
+			{
+				"fieldName": "CURP_BIO_DATA.BIO_FILEPATH",
+				"primaryField": "CURP_BIO_DATA.CURP_ID",
+				"fieldToMap": "individualBiometrics_rightThumb,individualBiometrics_rightIndex,individualBiometrics_rightMiddle,individualBiometrics_rightRing,individualBiometrics_rightLittle,individualBiometrics_leftThumb,individualBiometrics_leftIndex,individualBiometrics_leftMiddle,individualBiometrics_leftRing,individualBiometrics_leftLittle,individualBiometrics_rightEye,individualBiometrics_leftEye,individualBiometrics_face",
+				"individualBiometricFormat" : [
+					{
+						"subType" : "RIGHT_THUMB",
+						"imageFormat" : "WSQ"
+					},
+					{
+						"subType" : "LEFT_THUMB",
+						"imageFormat" : "WSQ"
+					},
+					{
+						"subType" : "RIGHT_INDEX",
+						"imageFormat" : "WSQ"
+					},
+					{
+						"subType" : "RIGHT_MIDDLE",
+						"imageFormat" : "WSQ"
+					},
+					{
+						"subType" : "RIGHT_RING",
+						"imageFormat" : "WSQ"
+					},
+					{
+						"subType" : "RIGHT_LITTLE",
+						"imageFormat" : "WSQ"
+					},
+					{
+						"subType" : "LEFT_INDEX",
+						"imageFormat" : "WSQ"
+					},
+					{
+						"subType" : "LEFT_MIDDLE",
+						"imageFormat" : "WSQ"
+					},
+					{
+						"subType" : "LEFT_RING",
+						"imageFormat" : "WSQ"
+					},
+					{
+						"subType" : "LEFT_LITTLE",
+						"imageFormat" : "WSQ"
+					},
+					{
+						"subType" : "FACE",
+						"imageFormat" : "JPEG"
+					},
+					{
+						"subType" : "LEFT_IRIS",
+						"imageFormat" : "PNG"
+					},
+					{
+						"subType" : "RIGHT_IRIS",
+						"imageFormat" : "PNG"
+					}
+				]
+			},
+			{
+				"fieldName": "CURP_BIO_DATA.CURP_CR_DTIMES",
+				"fieldToMap": "REF_CODE"
+			}
+		],
+		"trackerInfo" : {
+			"trackerColumn" : "CURP_BIO_DATA.CURP_ID"
+		}
+	},
+	"requesttime": "2018-12-10T06:12:52.994Z",
+	"version": "string"
 }
